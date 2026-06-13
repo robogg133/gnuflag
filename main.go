@@ -181,16 +181,17 @@ func (p *Parser) Parse() error {
 				}
 				continue
 			}
-			if !p.receivedArgs.Next() {
-				return &ErrorRequiresAnArg{CommandName: p.CommandName, OptionName: arg}
-			}
 
 			var value string
 			if len(arg) > 1 {
 				value = arg[1:]
 				value = strings.TrimPrefix(value, `"`)
 				value = strings.TrimSuffix(value, `"`)
+
 			} else {
+				if !p.receivedArgs.Next() {
+					return &ErrorRequiresAnArg{CommandName: p.CommandName, OptionName: arg}
+				}
 				value = p.receivedArgs.Value()
 			}
 			err := p.parse[id.id](value)
