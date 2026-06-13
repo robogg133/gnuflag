@@ -69,6 +69,10 @@ func (p *Parser) addHelp(full, help string, shorts ...string) {
 	}{Short: shorts, Long: full, Help: help})
 }
 
+func (p *Parser) Arg(n int) string {
+	return p.args[n]
+}
+
 func (p *Parser) SetFlagString(full, help string, value *string, shorts ...string) {
 	validate(full, shorts...)
 	id := p.addTrigger(full, false, shorts...)
@@ -91,6 +95,21 @@ func (p *Parser) SetFlagInt(full, help string, value *int, shorts ...string) {
 			return err
 		}
 		*value = n
+		return nil
+	}
+}
+
+func (p *Parser) SetFlagBool(full, help string, value *bool, shorts ...string) {
+	validate(full, shorts...)
+	id := p.addTrigger(full, true, shorts...)
+	p.addHelp(full, help, shorts...)
+
+	p.parse[id] = func(v string) error {
+		if v == "false" {
+			*value = false
+		} else {
+			*value = true
+		}
 		return nil
 	}
 }
