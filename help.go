@@ -24,6 +24,7 @@ func (p *Parser) help() {
 		builder.WriteRune('\n')
 	}
 	helpmsg := builder.String()
+	helpmsg = strings.TrimSuffix(helpmsg, "\n")
 	p.parse[id] = func(_ string) error {
 		fmt.Print(helpmsg)
 		os.Exit(0)
@@ -86,11 +87,23 @@ func separateString(s string, width int) []string {
 		return []string{s}
 	}
 
-	result := make([]string, 0, len(s)/width+1)
+	result := make([]string, 0)
+	bf := 0
 	for i := 0; i < len(s); i += width {
 		end := i + width
 		end = min(end, len(s))
-		result = append(result, s[i:end])
+
+		afterSpace := offsetUntilNewLineOrSpace(s, end)
+		result = append(result, s[bf:afterSpace])
+		bf = afterSpace + 1
 	}
 	return result
+}
+func offsetUntilNewLineOrSpace(s string, offset int) int {
+	for i := offset; i < len(s); i++ {
+		if s[i] == '\n' || s[i] == ' ' {
+			return i
+		}
+	}
+	return len(s)
 }
