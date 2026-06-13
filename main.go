@@ -69,6 +69,10 @@ func (p *Parser) addHelp(full, help string, shorts ...string) {
 	}{Short: shorts, Long: full, Help: help})
 }
 
+func (p *Parser) NArgs() int {
+	return len(p.args)
+}
+
 func (p *Parser) Arg(n int) string {
 	return p.args[n]
 }
