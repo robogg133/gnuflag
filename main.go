@@ -123,6 +123,9 @@ func (p *Parser) Parse() error {
 	for p.receivedArgs.Next() {
 		arg := p.receivedArgs.Value()
 		if s, ok := strings.CutPrefix(arg, "--"); ok {
+			if len(s) == 0 {
+				continue
+			}
 			value := ""
 			if split := strings.SplitN(s, "=", 2); len(split) == 2 {
 				arg = split[0]
@@ -162,6 +165,9 @@ func (p *Parser) Parse() error {
 				}
 			}
 		} else if s, ok := strings.CutPrefix(arg, "-"); ok {
+			if len(s) == 0 {
+				continue
+			}
 			arg = s
 			id, ok := p.triggers[string(arg[0])]
 			if !ok {
