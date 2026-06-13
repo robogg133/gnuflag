@@ -1,0 +1,184 @@
+package gnuflag
+
+import (
+	"fmt"
+	"strings"
+)
+
+type Parser struct {
+	CommandName  string
+	receivedArgs argList
+
+	Usage       string
+	Description string
+	Slogan      string
+	info        []struct {
+		Short []string
+		Long  string
+		Help  string
+	}
+
+	args []string
+
+	lastid   uint8
+	triggers map[string]struct {
+		id     uint8
+		isBool bool
+	}
+
+	parse map[uint8]func(string) error
+}
+
+type Trigger struct {
+	Short, Full string
+}
+
+func NewParser(args []string) *Parser {
+	return &Parser{
+		CommandName:  args[0],
+		receivedArgs: argList{src: args[1:]},
+		triggers: make(map[string]struct {
+			id     uint8
+			isBool bool
+		}),
+		parse: make(map[uint8]func(string) error),
+	}
+}
+
+func (p *Parser) addTrigger(full string, isBool bool, shorts ...string) uint8 {
+	p.lastid++
+	p.triggers[full] = struct {
+		id     uint8
+		isBool bool
+	}{id: p.lastid, isBool: isBool}
+	for _, short := range shorts {
+		p.triggers[short] = struct {
+			id     uint8
+			isBool bool
+		}{id: p.lastid, isBool: isBool}
+	}
+	return p.lastid
+}
+
+func (p *Parser) addHelp(full, help string, shorts ...string) {
+	p.info = append(p.info, struct {
+		Short []string
+		Long  string
+		Help  string
+	}{Short: shorts, Long: full, Help: help})
+}
+
+func (p *Parser) SetFlagString(full, help string, value *string, shorts ...string) {
+	validate(full, shorts...)
+	id := p.addTrigger(full, false, shorts...)
+	p.addHelp(full, help, shorts...)
+
+	p.parse[id] = func(v string) error {
+		*value = v
+		return nil
+	}
+}
+
+func (p *Parser) Parse() error {
+	p.help()
+	for p.receivedArgs.Next() {
+		arg := p.receivedArgs.Value()
+		if s, ok := strings.CutPrefix(arg, "--"); ok {
+			value := ""
+			if split := strings.SplitN(s, "=", 2); len(split) == 2 {
+				arg = split[0]
+				value = split[1]
+			} else {
+				arg = s
+			}
+
+			id, ok := p.triggers[arg]
+			if !ok {
+				return &ErrorNotRecognized{CommandName: p.CommandName, OptionName: arg}
+			}
+			if id.isBool {
+				err := p.parse[id.id]("")
+				if err != nil {
+					return err
+				}
+				continue
+			}
+
+			if value != "" {
+				value = strings.TrimPrefix(value, `"`)
+				value = strings.TrimSuffix(value, `"`)
+
+				err := p.parse[id.id](value)
+				if err != nil {
+					return err
+				}
+			} else {
+				if !p.receivedArgs.Next() {
+					return &ErrorRequiresAnArg{CommandName: p.CommandName, OptionName: arg}
+				}
+
+				err := p.parse[id.id](p.receivedArgs.Value())
+				if err != nil {
+					return err
+				}
+			}
+		} else if s, ok := strings.CutPrefix(arg, "-"); ok {
+			arg = s
+			id, ok := p.triggers[string(arg[0])]
+			if !ok {
+				return &ErrorInvalidOption{CommandName: p.CommandName, OptionName: arg}
+			}
+
+			if id.isBool {
+				err := p.parse[id.id](p.receivedArgs.Value())
+				if err != nil {
+					return err
+				}
+				continue
+			}
+			if !p.receivedArgs.Next() {
+				return &ErrorRequiresAnArg{CommandName: p.CommandName, OptionName: arg}
+			}
+
+			var value string
+			if len(arg) > 1 {
+				value = arg[1:]
+				value = strings.TrimPrefix(value, `"`)
+				value = strings.TrimSuffix(value, `"`)
+			} else {
+				value = p.receivedArgs.Value()
+			}
+			err := p.parse[id.id](value)
+			if err != nil {
+				return err
+			}
+		} else {
+			p.args = append(p.args, arg)
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (p *Parser) TryHelp() string {
+	return fmt.Sprintf("Try \"%s --help\" for more information.", p.CommandName)
+}
+
+func validate(full string, shorts ...string) error {
+	if len(shorts) == 0 && full == "" {
+		return fmt.Errorf("invalid flags")
+	}
+
+	if strings.Contains(full, "=") {
+		return fmt.Errorf("flag names cannot contain '='")
+	}
+
+	for _, short := range shorts {
+		if strings.Contains(short, "=") {
+			return fmt.Errorf("flag names cannot contain '='")
+		}
+	}
+
+	return nil
+}
