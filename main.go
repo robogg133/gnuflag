@@ -2,6 +2,7 @@ package gnuflag
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -75,6 +76,21 @@ func (p *Parser) SetFlagString(full, help string, value *string, shorts ...strin
 
 	p.parse[id] = func(v string) error {
 		*value = v
+		return nil
+	}
+}
+
+func (p *Parser) SetFlagInt(full, help string, value *int, shorts ...string) {
+	validate(full, shorts...)
+	id := p.addTrigger(full, false, shorts...)
+	p.addHelp(full, help, shorts...)
+
+	p.parse[id] = func(v string) error {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return err
+		}
+		*value = n
 		return nil
 	}
 }
