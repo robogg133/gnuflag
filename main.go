@@ -2,6 +2,7 @@ package gnuflag
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -136,7 +137,9 @@ func (p *Parser) Parse() error {
 
 			id, ok := p.triggers[arg]
 			if !ok {
-				return &ErrorNotRecognized{CommandName: p.CommandName, OptionName: arg}
+				err := &ErrorNotRecognized{CommandName: p.CommandName, OptionName: arg}
+				fmt.Println(err.Error())
+				os.Exit(2)
 			}
 			if id.isBool {
 				err := p.parse[id.id]("")
@@ -156,7 +159,9 @@ func (p *Parser) Parse() error {
 				}
 			} else {
 				if !p.receivedArgs.Next() {
-					return &ErrorRequiresAnArg{CommandName: p.CommandName, OptionName: arg}
+					err := &ErrorRequiresAnArg{CommandName: p.CommandName, OptionName: arg}
+					fmt.Println(err.Error())
+					os.Exit(2)
 				}
 
 				err := p.parse[id.id](p.receivedArgs.Value())
@@ -171,7 +176,9 @@ func (p *Parser) Parse() error {
 			arg = s
 			id, ok := p.triggers[string(arg[0])]
 			if !ok {
-				return &ErrorInvalidOption{CommandName: p.CommandName, OptionName: arg}
+				err := &ErrorInvalidOption{CommandName: p.CommandName, OptionName: arg}
+				fmt.Println(err.Error())
+				os.Exit(2)
 			}
 
 			if id.isBool {
@@ -190,7 +197,9 @@ func (p *Parser) Parse() error {
 
 			} else {
 				if !p.receivedArgs.Next() {
-					return &ErrorRequiresAnArg{CommandName: p.CommandName, OptionName: arg}
+					err := &ErrorRequiresAnArg{CommandName: p.CommandName, OptionName: arg}
+					fmt.Println(err.Error())
+					os.Exit(2)
 				}
 				value = p.receivedArgs.Value()
 			}
